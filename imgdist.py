@@ -21,49 +21,60 @@ def save_image(image, original_file_path):
     image.save('results/{}-shortest-path.png'.format(file_basename))
 
 
-def pixel(x, y):
-    return '{},{}'.format(x, y)
-
-
-def coords(p):
-    return list(map(int, p.split(',')))
-
-
-def rgb(pixel_map, p):
-    c, r = coords(p)
-    return pixel_map[c, r]
-
-
-def colordist(pixel_map, p1, p2):
+def colordist(pixels, p1, p2):
     g = 1  # constant
-    r1, g1, b1 = rgb(pixel_map, p1)
-    r2, g2, b2 = rgb(pixel_map, p2)
+    col1, row1 = p1
+    col2, row2 = p2
+    r1, g1, b1 = pixels[col1, row1]
+    r2, g2, b2 = pixels[col2, row2]
     l2_norm = math.sqrt((r2 - r1) ** 2 + (g2 - g1) ** 2 + (b2 - b1) ** 2)
     distance = math.sqrt(1 + g * l2_norm)
     return distance
 
 
+def pixel_neighbours(pixel, image):
+    col, row = pixel
+    width, height = image.size
+
+    up = (col, row - 1)
+    down = (col, row + 1)
+    left = (col - 1, row)
+    right = (col + 1, row)
+
+    neighbours = []
+    if row - 1 >= 0:
+        neighbours.append(up)
+    if row + 1 < height:
+        neighbours.append(down)
+    if col - 1 >= 0:
+        neighbours.append(left)
+    if col + 1 < width:
+        neighbours.append(right)
+
+    return neighbours
+
+
 def generate_graph(image, pixels):
-    image_width, image_length = image.size
+    image_width, image_height = image.size
     graph = nx.Graph()
 
     # Add each pixel to the graph as a node
     for col in range(image_width):
-        for row in range(image_length):
-            p = pixel(col, row)
+        for row in range(image_height):
+            p = (col, row)
             graph.add_node(p, color=pixels[col, row])
 
     # Add edges between adjacent pixels, weighted by their color distance
     for col in range(image_width):
-        for row in range(image_length):
-            curr = pixel(col, row)
-            up = pixel(col, row - 1)
-            down = pixel(col, row + 1)
-            left = pixel(col - 1, row)
-            right = pixel(col + 1, row)
+        for row in range(image_height):
+            curr = (col, row)
+            up = (col, row - 1)
+            down = (col, row + 1)
+            left = (col - 1, row)
+            right = (col + 1, row)
             if row - 1 >= 0:
                 graph.add_edge(curr, up, weight=colordist(pixels, curr, up))
-            if row + 1 < image_length:
+            if row + 1 < image_height:
                 graph.add_edge(curr, down, weight=colordist(pixels, curr, down))
             if col - 1 >= 0:
                 graph.add_edge(curr, left, weight=colordist(pixels, curr, left))
@@ -76,12 +87,12 @@ def generate_graph(image, pixels):
 def draw_shortest_path(pixels, path):
     green = (0, 255, 0)
     for p in path:
-        col, row = coords(p)
+        col, row = p
         pixels[col, row] = green
 
 
 def visualize_graph(graph):
-    node_positions = {node: coords(node) for node in graph.nodes}
+    node_positions = {node: node for node in graph.nodes}
     nx.draw_networkx(graph, pos=node_positions, node_color='black', node_size=50, with_labels=False)
     plt.plot()
     plt.show()
@@ -96,7 +107,7 @@ def decrease_key(heap, new_key, identifier):
     heappush(heap, (new_key, c, identifier))
 
 
-def standard_dijkstra(graph, source, target):
+def standard_dijkstra(graph, source):
     """Dijkstra's algorithm implementation, textbook style."""
     dist = {source: 0}
     path = {source: [source]}
@@ -124,7 +135,7 @@ def standard_dijkstra(graph, source, target):
     return dist, path
 
 
-def fast_dijkstra(graph, source, target):
+def heappush_dijkstra(graph, source):
     """Dijkstra's algorithm implementation that pushes new entries to the
     priority queue instead of performing decrease-key operations. Stale
     nodes are discarded when popped from the queue.
@@ -159,7 +170,7 @@ def fast_dijkstra(graph, source, target):
     return dist, path
 
 
-def networkx_dijkstra(graph, source, target):
+def networkx_dijkstra(graph, source):
     """Dijkstra's algorithm implementation inspired by NetworkX source."""
     dist = {}
     path = {source: [source]}
@@ -188,12 +199,12 @@ def networkx_dijkstra(graph, source, target):
 
 
 def test_correctness(graph, source, target):
-    d1, p1 = standard_dijkstra(graph, source, target)
-    d2, p2 = fast_dijkstra(graph, source, target)
-    d3, p3 = networkx_dijkstra(graph, source, target)
+    d1, p1 = standard_dijkstra(graph, source)
+    d2, p2 = heappush_dijkstra(graph, source)
+    d3, p3 = networkx_dijkstra(graph, source)
 
-    print("dijkstra:", d1[target], len(p1[target]))
-    print("fast_dijkstra:", d2[target], len(p2[target]))
+    print("standard_dijkstra:", d1[target], len(p1[target]))
+    print("heappush_dijkstra:", d2[target], len(p2[target]))
     print("networkx_dijkstra:", d3[target], len(p3[target]))
 
     assert d1[target] == d2[target] == d3[target]
@@ -207,16 +218,16 @@ def test_runtime(functions, original_image, pixels):
     for func in results.keys():
         image = original_image.copy()
         for i in range(samples):
-            width, length = image.size
-            num_pixels = width * length
-            new_size = (width - step_size, length - step_size)
+            width, height = image.size
+            num_pixels = width * height
+            new_size = (width - step_size, height - step_size)
             image.thumbnail(new_size, PIL.Image.ANTIALIAS)
 
             graph = generate_graph(image, pixels)
-            source = pixel(0, 0)
-            target = (width - 1, length - 1)
+            source = (0, 0)
+            target = (width - 1, height - 1)
 
-            print("Running {} with image size {}x{} ({})".format(func.__name__, width, length, num_pixels))
+            print("Running {} with image size {}x{} ({})".format(func.__name__, width, height, num_pixels))
             with Timer() as t:
                 func(graph, source, target)
             print("\tTime:", t.elapsed)
@@ -226,7 +237,7 @@ def test_runtime(functions, original_image, pixels):
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     ax.plot(results[standard_dijkstra]['x'], results[standard_dijkstra]['y'])
-    ax.plot(results[fast_dijkstra]['x'], results[fast_dijkstra]['y'])
+    ax.plot(results[heappush_dijkstra]['x'], results[heappush_dijkstra]['y'])
     ax.set_yscale('log')
     ax.set_xscale('log')
     plt.xlabel("Number of Pixels")
@@ -246,16 +257,16 @@ def main():
         return
 
     image, pixels = load_image(file_path)
-    width, length = image.size
+    width, height = image.size
 
     graph = generate_graph(image, pixels)
 
-    top_left = pixel(0, 0)
-    bottom_right = pixel(width - 1, length - 1)
-
+    top_left = (0, 0)
+    bottom_right = (width - 1, height - 1)
     source = top_left
     target = bottom_right
-    distance, path = fast_dijkstra(graph, source, target)
+
+    distance, path = heappush_dijkstra(graph, source)
 
     print("Shortest path distance:", distance[target])
     print("Shortest path length:", len(path[target]))
