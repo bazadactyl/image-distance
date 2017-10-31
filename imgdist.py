@@ -35,9 +35,11 @@ def rgb(pixel_map, p):
 
 
 def colordist(pixel_map, p1, p2):
+    g = 1  # constant
     r1, g1, b1 = rgb(pixel_map, p1)
     r2, g2, b2 = rgb(pixel_map, p2)
-    distance = math.sqrt((r2 - r1) ** 2 + (g2 - g1) ** 2 + (b2 - b1) ** 2)
+    l2_norm = math.sqrt((r2 - r1) ** 2 + (g2 - g1) ** 2 + (b2 - b1) ** 2)
+    distance = math.sqrt(1 + g * l2_norm)
     return distance
 
 
@@ -246,8 +248,6 @@ def main():
     image, pixels = load_image(file_path)
     width, length = image.size
 
-    test_runtime([standard_dijkstra, fast_dijkstra], image, pixels)
-
     graph = generate_graph(image, pixels)
 
     top_left = pixel(0, 0)
@@ -259,9 +259,6 @@ def main():
 
     print("Shortest path distance:", distance[target])
     print("Shortest path length:", len(path[target]))
-
-    test_correctness(graph, source, target)
-    visualize_graph(graph)
 
     draw_shortest_path(pixels, path[target])
     save_image(image, file_path)
