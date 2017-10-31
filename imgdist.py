@@ -3,14 +3,16 @@ import itertools
 import math
 import os
 import sys
+import matplotlib.pyplot as plt
 import networkx as nx
-from PIL import Image
+import PIL
 
 
 def load_image(file_path):
-    image = Image.open(file_path)
-    pixels = image.load()
-    return image, pixels
+    image = PIL.Image.open(file_path)
+    rgb_image = image.convert('RGB')
+    pixels = rgb_image.load()
+    return rgb_image, pixels
 
 
 def save_image(image, original_file_path):
@@ -23,7 +25,7 @@ def pixel(x, y):
 
 
 def coords(p):
-    return map(int, p.split(','))
+    return list(map(int, p.split(',')))
 
 
 def rgb(pixel_map, p):
@@ -45,7 +47,8 @@ def generate_graph(image, pixels):
     # Add each pixel to the graph as a node
     for col in range(image_width):
         for row in range(image_length):
-            graph.add_node(pixel(col, row))
+            p = pixel(col, row)
+            graph.add_node(p, color=pixels[col, row])
 
     # Add edges between adjacent pixels, weighted by their color distance
     for col in range(image_width):
@@ -75,25 +78,27 @@ def draw_shortest_path(pixels, path):
 
 
 def visualize_graph(graph):
-    pass
+    node_positions = {node: coords(node) for node in graph.nodes}
+    nx.draw_networkx(graph, pos=node_positions, node_color='black', node_size=50, with_labels=False)
+    plt.plot()
+    plt.show()
 
 
-def decrease_key(heap, new_key, item):
-    heap_size = len(heap)
-    for i in range(heap_size):
-        _, c, v = heap[i]
-        if v == item:
-            heap.pop(i)
+def decrease_key(heap, new_key, identifier):
+    c = 0
+    for i in range(len(heap)):
+        if heap[i][2] == identifier:
+            _, c, _ = heap.pop(i)
             break
-    new_tuple = (new_key, c, item)
-    heappush(heap, new_tuple)
+    heappush(heap, (new_key, c, identifier))
 
 
-def dijkstra_dk(graph, source, target):
+def dijkstra(graph, source, target):
+    """Dijkstra's algorithm implementation, textbook style."""
     dist = {source: 0}
-    paths = {source: [source]}
+    path = {source: [source]}
 
-    # heap tiebreaker - yields the shortest path with least edges
+    # min-heap tiebreaker; causes output to be the shortest path with fewest edges
     c = itertools.count()
 
     heap = []
@@ -105,25 +110,59 @@ def dijkstra_dk(graph, source, target):
 
     while heap:
         _, _, u = heappop(heap)
-        if u == target:
-            break
         for v in nx.all_neighbors(graph=graph, node=u):
             e = graph.get_edge_data(u, v)
             alt = dist[u] + e['weight']
             if alt < dist[v]:
                 dist[v] = alt
-                paths[v] = paths[u] + [v]
+                path[v] = path[u] + [v]
                 decrease_key(heap, dist[v], v)
 
-    return dist, paths
+    return dist, path
 
 
-def dijkstra(graph, source, target):
+def fast_dijkstra(graph, source, target):
+    """Dijkstra's algorithm implementation that pushes new entries to the
+    priority queue instead of performing decrease-key operations. Stale
+    nodes are discarded when popped from the queue.
+    """
+    path = {source: [source]}
+    graph.nodes[source]['dist'] = 0
+
+    # min-heap tiebreaker; causes output to be the shortest path with fewest edges
+    c = itertools.count()
+
+    heap = []
+
+    for node in graph.nodes:
+        init_dist = 0 if node == source else math.inf
+        graph.nodes[node]['dist'] = init_dist
+        heappush(heap, (init_dist, next(c), node))
+
+    while heap:
+        u_dist, _, u = heappop(heap)
+        if u_dist != graph.nodes[u]['dist']:
+            continue
+        for v in nx.all_neighbors(graph=graph, node=u):
+            v_dist = graph.nodes[v]['dist']
+            uv_edge = graph.get_edge_data(u, v)
+            alt_dist = u_dist + uv_edge['weight']
+            if alt_dist < v_dist:
+                path[v] = path[u] + [v]
+                graph.nodes[v]['dist'] = alt_dist
+                heappush(heap, (alt_dist, next(c), v))
+
+    dist = nx.get_node_attributes(graph, 'dist')
+    return dist, path
+
+
+def networkx_dijkstra(graph, source, target):
+    """Dijkstra's algorithm implementation inspired by NetworkX source."""
     dist = {}
+    path = {source: [source]}
     seen = {source: 0}
-    paths = {source: [source]}
 
-    # heap tiebreaker - yields the shortest path with least edges
+    # min-heap tiebreaker; causes output to be the shortest path with fewest edges
     c = itertools.count()
 
     heap = []
@@ -134,17 +173,27 @@ def dijkstra(graph, source, target):
         if u in dist:
             continue
         dist[u] = d
-        if u == target:
-            break
         for v in nx.all_neighbors(graph=graph, node=u):
             e = graph.get_edge_data(u, v)
             alt = dist[u] + e['weight']
             if v not in seen or alt < seen[v]:
                 seen[v] = alt
                 heappush(heap, (alt, next(c), v))
-                paths[v] = paths[u] + [v]
+                path[v] = path[u] + [v]
 
-    return dist, paths
+    return dist, path
+
+
+def test_correctness(graph, source, target):
+    d1, p1 = dijkstra(graph, source, target)
+    d2, p2 = fast_dijkstra(graph, source, target)
+    d3, p3 = networkx_dijkstra(graph, source, target)
+
+    print("dijkstra:", d1[target], len(p1[target]))
+    print("fast_dijkstra:", d2[target], len(p2[target]))
+    print("networkx_dijkstra:", d3[target], len(p3[target]))
+
+    assert d1[target] == d2[target] == d3[target]
 
 
 def main():
@@ -164,13 +213,15 @@ def main():
 
     source = top_left
     target = bottom_right
-    distances, paths = dijkstra_dk(graph, source, target)
-    distance, path = distances[target], paths[target]
+    distance, path = fast_dijkstra(graph, source, target)
 
-    print("Shortest path distance:", distance)
-    print("Shortest path length:", len(path))
+    print("Shortest path distance:", distance[target])
+    print("Shortest path length:", len(path[target]))
 
-    draw_shortest_path(pixels, path)
+    test_correctness(graph, source, target)
+    visualize_graph(graph)
+
+    draw_shortest_path(pixels, path[target])
     save_image(image, file_path)
     image.show()
 
