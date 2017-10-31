@@ -1,0 +1,60 @@
+Running standard_dijkstra with image size 512x512 (262144)
+	Time: 11715.616806828999
+Running standard_dijkstra with image size 480x480 (230400)
+	Time: 7677.905199748995
+Running standard_dijkstra with image size 448x448 (200704)
+	Time: 5890.824793144013
+Running standard_dijkstra with image size 416x416 (173056)
+	Time: 4089.5914491430012
+Running standard_dijkstra with image size 384x384 (147456)
+	Time: 2592.175273118002
+Running standard_dijkstra with image size 352x352 (123904)
+	Time: 1551.4733438380063
+Running standard_dijkstra with image size 320x320 (102400)
+	Time: 853.540910893993
+Running standard_dijkstra with image size 288x288 (82944)
+	Time: 447.61446685899864
+Running standard_dijkstra with image size 256x256 (65536)
+	Time: 219.64826482300123
+Running standard_dijkstra with image size 224x224 (50176)
+	Time: 113.01031438499922
+Running standard_dijkstra with image size 192x192 (36864)
+	Time: 46.64751662200433
+Running standard_dijkstra with image size 160x160 (25600)
+	Time: 19.38224703000742
+Running standard_dijkstra with image size 128x128 (16384)
+	Time: 6.3830952040007105
+Running standard_dijkstra with image size 96x96 (9216)
+	Time: 0.966915049997624
+Running standard_dijkstra with image size 64x64 (4096)
+	Time: 0.04926737499772571
+Running fast_dijkstra with image size 512x512 (262144)
+	Time: 5.963519084994914
+Running fast_dijkstra with image size 480x480 (230400)
+	Time: 5.949067213994567
+Running fast_dijkstra with image size 448x448 (200704)
+	Time: 4.261424537995481
+Running fast_dijkstra with image size 416x416 (173056)
+	Time: 3.7517023859982146
+Running fast_dijkstra with image size 384x384 (147456)
+	Time: 2.8609852749941638
+Running fast_dijkstra with image size 352x352 (123904)
+	Time: 2.213056739012245
+Running fast_dijkstra with image size 320x320 (102400)
+	Time: 1.6551099390053423
+Running fast_dijkstra with image size 288x288 (82944)
+	Time: 1.309427465996123
+Running fast_dijkstra with image size 256x256 (65536)
+	Time: 0.9695563209970715
+Running fast_dijkstra with image size 224x224 (50176)
+	Time: 0.6219944939948618
+Running fast_dijkstra with image size 192x192 (36864)
+	Time: 0.41161110800749157
+Running fast_dijkstra with image size 160x160 (25600)
+	Time: 0.20256411899754312
+Running fast_dijkstra with image size 128x128 (16384)
+	Time: 0.10381393499847036
+Running fast_dijkstra with image size 96x96 (9216)
+	Time: 0.04151817999081686
+Running fast_dijkstra with image size 64x64 (4096)
+	Time: 0.00921703600033652

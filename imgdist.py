@@ -3,6 +3,7 @@ import itertools
 import math
 import os
 import sys
+from contexttimer import Timer
 import matplotlib.pyplot as plt
 import networkx as nx
 import PIL
@@ -93,7 +94,7 @@ def decrease_key(heap, new_key, identifier):
     heappush(heap, (new_key, c, identifier))
 
 
-def dijkstra(graph, source, target):
+def standard_dijkstra(graph, source, target):
     """Dijkstra's algorithm implementation, textbook style."""
     dist = {source: 0}
     path = {source: [source]}
@@ -185,7 +186,7 @@ def networkx_dijkstra(graph, source, target):
 
 
 def test_correctness(graph, source, target):
-    d1, p1 = dijkstra(graph, source, target)
+    d1, p1 = standard_dijkstra(graph, source, target)
     d2, p2 = fast_dijkstra(graph, source, target)
     d3, p3 = networkx_dijkstra(graph, source, target)
 
@@ -196,6 +197,45 @@ def test_correctness(graph, source, target):
     assert d1[target] == d2[target] == d3[target]
 
 
+def test_runtime(functions, original_image, pixels):
+    samples = 15
+    step_size = 32
+    results = {func: {'x': [], 'y': []} for func in functions}
+
+    for func in results.keys():
+        image = original_image.copy()
+        for i in range(samples):
+            width, length = image.size
+            num_pixels = width * length
+            new_size = (width - step_size, length - step_size)
+            image.thumbnail(new_size, PIL.Image.ANTIALIAS)
+
+            graph = generate_graph(image, pixels)
+            source = pixel(0, 0)
+            target = (width - 1, length - 1)
+
+            print("Running {} with image size {}x{} ({})".format(func.__name__, width, length, num_pixels))
+            with Timer() as t:
+                func(graph, source, target)
+            print("\tTime:", t.elapsed)
+            results[func]['x'].append(num_pixels)
+            results[func]['y'].append(t.elapsed)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.plot(results[standard_dijkstra]['x'], results[standard_dijkstra]['y'])
+    ax.plot(results[fast_dijkstra]['x'], results[fast_dijkstra]['y'])
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    plt.xlabel("Number of Pixels")
+    plt.ylabel("Runtime (seconds)")
+    ax.legend([
+        'Dijkstra\'s (decrease-key)',
+        'Dijkstra\'s (heap-push)',
+    ], loc='upper left')
+    plt.show()
+
+
 def main():
     try:
         file_path = os.path.join(os.getcwd(), sys.argv[1])
@@ -204,12 +244,14 @@ def main():
         return
 
     image, pixels = load_image(file_path)
-    image_width, image_length = image.size
+    width, length = image.size
+
+    test_runtime([standard_dijkstra, fast_dijkstra], image, pixels)
 
     graph = generate_graph(image, pixels)
 
     top_left = pixel(0, 0)
-    bottom_right = pixel(image_width - 1, image_length - 1)
+    bottom_right = pixel(width - 1, length - 1)
 
     source = top_left
     target = bottom_right
